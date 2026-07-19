@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "accountKey": "gangnam-central-2",
+  "region": "강남중앙2",
+  "capturedAt": "2026-07-19T11:20:24.759Z",
+  "url": "https://notouch.cc/",
+  "title": "NoTouch",
+  "bodyText": "본문으로 건너뛰기\nNoTouch\n홈\n\n반갑습니다 김희연님\n\n지역\n\n강남중앙2\n\n현재 등수\n\n37위\n총 완료율\n125.6%\n\n내 완료\n\n9.4개\n\n내 거절\n\n2개\n\n주의\n\n내 취소\n\n0개\n\n내 거절율\n\n17.5%\n\n높음\n지사 현황\n현재타임\n저녁 논피크\n현재타임 완료율\n5.6%\n운행인원\n24/40명\n지사 거절율\n높음\n8%\n지사 타임별 현황\n\n아침\n완료\n\n183.7%\n\n잔여 0건 · 목표 48건\n\n점심피크\n완료\n\n166.3%\n\n잔여 0건 · 목표 216건\n\n점심논피크\n완료\n\n178.6%\n\n잔여 0건 · 목표 132건\n\n저녁피크\n완료\n\n120.5%\n\n잔여 0건 · 목표 258건\n\n저녁논피크\n현재\n\n5.6%\n\n잔여 136건 · 목표 144건\n\n미션 현황\n\n디너 미션\n\n07/19 16:50 ~ 07/19 19:59\n\n진행 중\n\n381 / 396건\n\n96.2%\n\n달성 목표 396건\n\n달성까지 15건\n\n보너스 목표 554건\n\n리워드 프로그램\n\n7.15 6:00 ~ 7.22 5:59\n\nBlack\n9.1까지\n\n주요 조건 달성 현황\n\n수행률 90% 이상\n현재 93%\n구간 실패 0개 유지\n현재 0개\n\n주요 조건 달성 완료\n\n총 건수 보너스 미션\n\n58.6%\n\n5027건 / 8568건\n\n목표 달성 시 추가 보너스\n\n주말 디너 건수 보너스 미션\n\n53.9%\n\n628건 / 1164건\n\n목표 달성 시 추가 보너스\n\nBlack+\nBlack\nGold\nPurple\nBlue\nGreen\nYellow\n관리자 이재인\n010-5906-3189\n전화\n홈\n순위\n마이\n관리",
+  "headings": [
+    "NoTouch\n홈",
+    "지사 현황",
+    "지사 타임별 현황",
+    "미션 현황",
+    "리워드 프로그램"
+  ],
+  "buttons": [
+    "본문으로 건너뛰기",
+    "관리자 이재인\n010-5906-3189\n전화",
+    "홈",
+    "순위",
+    "마이",
+    "관리"
+  ],
+  "candidates": [
+    {
+      "tag": "div",
+      "text": "반갑습니다 김희연님\n\n지역\n\n강남중앙2\n\n현재 등수\n\n37위",
+      "className": "glass-card rounded-2xl px-4 py-3",
+      "ariaLabel": "",
+      "role": ""
+    },
+    {
+      "tag": "div",
+      "text": "총 완료율\n125.6%",
+      "className": "rounded-xl border border-border/80 bg-card px-4 py-2.5 shadow-sm",
+      "ariaLabel": "",
+      "role": ""
+    },
+    {
+      "tag": "div",
+      "text": "내 완료\n\n9.4개",
+      "className": "glass-card rounded-xl p-3",
+      "ariaLabel": "",
+      "role": ""
+    },
+    {
+      "tag": "div",
+      "text": "내 거절\n\n2개\n\n주의",
+      "className": "glass-card rounded-xl p-3",
+      "ariaLabel": "",
+      "role": ""
+    },
+    {
+      "tag": "div",
+      "text": "내 취소\n\n0개",
+      "className": "glass-card rounded-xl p-3",
+      "ariaLabel": "",
+      "role": ""
+    },
+    {
+      "tag": "div",
+      "text": "내 거절율\n\n17.5%\n\n높음",
+      "className": "glass-card rounded-xl p-3",
+      "ariaLabel": "",
+      "role": ""
+    },
+    {
+      "tag": "div",
+      "text": "지사 현황\n현재타임\n저녁 논피크\n현재타임 완료율\n5.6%\n운행인원\n24/40명\n지사 거절율\n높음\n8%",
+      "className": "glass-card rounded-2xl p-4",
+      "ariaLabel": "",
+      "role": ""
+    },
+    {
+      "tag": "div",
+      "text": "지사 타임별 현황\n\n아침\n완료\n\n183.7%\n\n잔여 0건 · 목표 48건\n\n점심피크\n완료\n\n166.3%\n\n잔여 0건 · 목표 216건\n\n점심논피크\n완료\n\n178.6%\n\n잔여 0건 · 목표 132건\n\n저녁피크\n완료\n\n120.5%\n\n잔여 0건 · 목표 258건\n\n저녁논피크\n현재\n\n5.6%\n\n잔여 136건 · 목표 144건",
+      "className": "glass-card rounded-2xl p-4",
+      "ariaLabel": "",
+      "role": ""
+    },
+    {
+      "tag": "div",
+      "text": "미션 현황\n\n디너 미션\n\n07/19 16:50 ~ 07/19 19:59\n\n진행 중\n\n381 / 396건\n\n96.2%\n\n달성 목표 396건\n\n달성까지 15건\n\n보너스 목표 554건",
+      "className": "glass-card rounded-2xl p-4",
+      "ariaLabel": "",
+      "role": ""
+    },
+    {
+      "tag": "div",
+      "text": "리워드 프로그램\n\n7.15 6:00 ~ 7.22 5:59\n\nBlack\n9.1까지\n\n주요 조건 달성 현황\n\n수행률 90% 이상\n현재 93%\n구간 실패 0개 유지\n현재 0개\n\n주요 조건 달성 완료\n\n총 건수 보너스 미션\n\n58.6%\n\n5027건 / 8568건\n\n목표 달성 시 추가 보너스\n\n주말 디너 건수 보너스 미션\n\n53.9%\n\n628건 / 1164건\n\n목표 달성 시 추가 보너스\n\nBlack+\nBlack\nGold\nPurple\nBlue\nGreen\nYellow",
+      "className": "glass-card rounded-2xl p-4",
+      "ariaLabel": "",
+      "role": ""
+    },
+    {
+      "tag": "a",
+      "text": "관리자 이재인\n010-5906-3189\n전화",
+      "className": "group flex items-center gap-3 rounded-2xl border border-border/80 bg-card px-4 py-3.5 shadow-sm transition-all active:scale-[0.99] hover:border-success/20 hover:shadow-md motion-reduce-safe",
+      "ariaLabel": "",
+      "role": ""
+    }
+  ],
+  "detected": {
+    "set": [],
+    "mission": [
+      {
+        "tag": "div",
+        "text": "미션 현황\n\n디너 미션\n\n07/19 16:50 ~ 07/19 19:59\n\n진행 중\n\n381 / 396건\n\n96.2%\n\n달성 목표 396건\n\n달성까지 15건\n\n보너스 목표 554건",
+        "className": "glass-card rounded-2xl p-4",
+        "ariaLabel": "",
+        "role": ""
+      },
+      {
+        "tag": "div",
+        "text": "리워드 프로그램\n\n7.15 6:00 ~ 7.22 5:59\n\nBlack\n9.1까지\n\n주요 조건 달성 현황\n\n수행률 90% 이상\n현재 93%\n구간 실패 0개 유지\n현재 0개\n\n주요 조건 달성 완료\n\n총 건수 보너스 미션\n\n58.6%\n\n5027건 / 8568건\n\n목표 달성 시 추가 보너스\n\n주말 디너 건수 보너스 미션\n\n53.9%\n\n628건 / 1164건\n\n목표 달성 시 추가 보너스\n\nBlack+\nBlack\nGold\nPurple\nBlue\nGreen\nYellow",
+        "className": "glass-card rounded-2xl p-4",
+        "ariaLabel": "",
+        "role": ""
+      }
+    ],
+    "reward": [
+      {
+        "tag": "div",
+        "text": "리워드 프로그램\n\n7.15 6:00 ~ 7.22 5:59\n\nBlack\n9.1까지\n\n주요 조건 달성 현황\n\n수행률 90% 이상\n현재 93%\n구간 실패 0개 유지\n현재 0개\n\n주요 조건 달성 완료\n\n총 건수 보너스 미션\n\n58.6%\n\n5027건 / 8568건\n\n목표 달성 시 추가 보너스\n\n주말 디너 건수 보너스 미션\n\n53.9%\n\n628건 / 1164건\n\n목표 달성 시 추가 보너스\n\nBlack+\nBlack\nGold\nPurple\nBlue\nGreen\nYellow",
+        "className": "glass-card rounded-2xl p-4",
+        "ariaLabel": "",
+        "role": ""
+      }
+    ]
+  }
+}

@@ -1,3 +1,8 @@
 node_modules
 dist
 .env
+
+# Local NoTouchCC reader state
+reader/profiles/
+reader/snapshots/
+reader/logs/

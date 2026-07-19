@@ -1,11 +1,28 @@
-﻿{
+{
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "notouchcentral",
   "main": "worker.js",
-  "compatibility_date": "2026-07-14",
+  "compatibility_date": "2026-07-15",
+
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "notouchcentral-db",
+      "database_id": "0ffe1cb1-eae5-41be-8f2f-b4e772107828"
+    }
+  ],
+
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
   }
 }

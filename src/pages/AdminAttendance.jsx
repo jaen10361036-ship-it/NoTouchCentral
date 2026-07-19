@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ArrowDownToLine,
   BriefcaseBusiness,
   CalendarDays,
   Check,
@@ -22,26 +21,6 @@ import {
   Utensils,
   X,
 } from "lucide-react";
-
-const initialManagers = [
-  { name: "이재인", role: "BOSS · 지사장", region: "강남중앙1", start: "09:07", status: "근무 중", checkoutCount: null, late: false },
-  { name: "이선호", role: "운영실장", region: "강남중앙2", start: "08:58", status: "식사중", checkoutCount: null, late: false, since: "11:50 시작" },
-  { name: "정희철", role: "남중앙 팀장", region: "강남남중앙", start: "09:15", status: "근무 중", checkoutCount: null, late: false },
-  { name: "서상원", role: "팀장", region: "강남서초중앙", start: "09:02", status: "근무 중", checkoutCount: null, late: false },
-  { name: "박성현", role: "팀장", region: "강남중앙1", start: "09:12", status: "휴식", checkoutCount: null, late: false, since: "10:30 시작" },
-  { name: "신정민", role: "팀장", region: "강남중앙2", start: "09:05", status: "배정대기중", checkoutCount: null, late: false },
-  { name: "김태호", role: "팀장", region: "강남서초중앙", start: "09:10", status: "근무 중", checkoutCount: null, late: false },
-  { name: "김남교", role: "팀장", region: "강남중앙2", start: "-", status: "미출근", checkoutCount: null, late: true },
-  { name: "백상열", role: "팀장", region: "강남남중앙", start: "08:55", status: "퇴근", end: "18:28", checkoutCount: 42, late: false },
-];
-
-const initialLeaves = [
-  { date: "2026-07-18", name: "정희철", status: "자동 승인", reason: "일반 휴무" },
-  { date: "2026-07-18", name: "서상원", status: "자동 승인", reason: "일반 휴무" },
-  { date: "2026-07-21", name: "이선호", status: "자동 승인", reason: "일반 휴무" },
-  { date: "2026-07-21", name: "김태호", status: "자동 승인", reason: "일반 휴무" },
-  { date: "2026-07-24", name: "김남교", status: "승인 대기", reason: "일반 휴무" },
-];
 
 const statusMeta = {
   "근무 중": { tone: "working", icon: BriefcaseBusiness },
@@ -107,9 +86,12 @@ function getCalendarCells(year, monthIndex) {
   ];
 }
 
-function AdminAttendance({ currentRegion }) {
-  const [managers, setManagers] = useState(initialManagers);
-  const [myStatus, setMyStatus] = useState("근무 중");
+function AdminAttendance({ currentRegion, token, currentUser: sessionUser, onAuthExpired }) {
+  const [managers, setManagers] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [myStatus, setMyStatus] = useState("미출근");
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState("");
   const [regionFilter, setRegionFilter] = useState("전체 권역");
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState("today");
@@ -119,30 +101,87 @@ function AdminAttendance({ currentRegion }) {
   const [checkoutCount, setCheckoutCount] = useState("");
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaveMemo, setLeaveMemo] = useState("");
-  const [leaves, setLeaves] = useState(initialLeaves);
+  const [leaves, setLeaves] = useState([]);
   const today = new Date();
   const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
   const [calendarMonth, setCalendarMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState(todayKey);
 
+
+  const authFetch = async (url, options = {}) => {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 401) {
+      onAuthExpired?.();
+    }
+
+    return response;
+  };
+
+  const loadAttendance = async () => {
+    setLoading(true);
+    try {
+      const response = await authFetch("/api/attendance/today", { cache: "no-store" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || "근태 정보를 불러오지 못했습니다.");
+      setManagers(result.managers || []);
+      setLeaves(result.leaves || []);
+      setCurrentUser(result.current || null);
+      setMyStatus(result.current?.status || "미출근");
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!token) return undefined;
+
+    loadAttendance();
+    const timer = window.setInterval(loadAttendance, 10000);
+    return () => window.clearInterval(timer);
+  }, [token]);
+
+  const sendAction = async (action, extra = {}) => {
+    setNotice("");
+    const response = await authFetch("/api/attendance/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...extra }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setNotice(result.message || "근태 처리 중 오류가 발생했습니다.");
+      return false;
+    }
+    setManagers(result.managers || []);
+    setLeaves(result.leaves || []);
+    setCurrentUser(result.current || null);
+    setMyStatus(result.current?.status || "미출근");
+    return true;
+  };
+
   const summary = useMemo(() => ({
-    checked: managers.filter((m) => m.start !== "-").length,
+    checked: managers.filter((m) => m.check_in).length,
     working: managers.filter((m) => m.status === "근무 중").length,
     break: managers.filter((m) => ["식사중", "휴식", "배정대기중"].includes(m.status)).length,
     off: managers.filter((m) => m.status === "퇴근").length,
-    absent: managers.filter((m) => m.status === "미출근").length,
+    late: managers.filter((m) => Number(m.late) === 1).length,
+    absent: managers.filter((m) => ["미출근", "휴무"].includes(m.status)).length,
   }), [managers]);
 
   const filtered = managers.filter((manager) => {
-    const regionOk = regionFilter === "전체 권역" || manager.region === regionFilter;
+    const regionOk = regionFilter === "전체 권역" || (manager.region || "미배정") === regionFilter;
     const queryOk = `${manager.name} ${manager.role}`.includes(query.trim());
     return regionOk && queryOk;
   });
-
-  const updateMyStatus = (status) => {
-    setMyStatus(status);
-    setManagers((prev) => prev.map((manager) => manager.name === "이재인" ? { ...manager, status } : manager));
-  };
 
   const handleAction = (button) => {
     if (button.label === "출근") {
@@ -155,61 +194,56 @@ function AdminAttendance({ currentRegion }) {
       setCheckoutOpen(true);
       return;
     }
-    updateMyStatus(button.status);
+    const actionMap = { "식사중": "meal", "휴식": "break", "배정대기중": "standby", "업무복귀": "resume" };
+    sendAction(actionMap[button.label]);
   };
 
-  const submitCheckIn = () => {
-    const now = new Date();
-    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    setMyStatus("근무 중");
-    setManagers((prev) => prev.map((manager) => manager.name === "이재인" ? {
-      ...manager,
-      start: time,
-      status: "근무 중",
-      end: undefined,
-      checkoutCount: null,
-      late: false,
-    } : manager));
-    setCheckInOpen(false);
+  const submitCheckIn = async () => {
+    const ok = await sendAction("checkin");
+    if (ok) setCheckInOpen(false);
   };
 
-  const submitCheckout = () => {
+  const submitApprovedCheckIn = async () => {
+    const reason = window.prompt("승인출근 사유를 입력해주세요.", "사전 보고 완료");
+    if (reason === null) return;
+    await sendAction("approved_checkin", { reason });
+  };
+
+  const submitCheckout = async () => {
     const parsed = Number(checkoutCount);
-    if (!Number.isFinite(parsed) || parsed < 0) return;
-    const now = new Date();
-    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    setMyStatus("퇴근");
-    setManagers((prev) => prev.map((manager) => manager.name === "이재인" ? {
-      ...manager,
-      status: "퇴근",
-      end: time,
-      checkoutCount: parsed,
-    } : manager));
-    setCheckoutOpen(false);
-    setCheckoutCount("");
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      setNotice("수행건수를 0 이상의 숫자로 입력해주세요.");
+      return;
+    }
+    const ok = await sendAction("checkout", { orders: parsed });
+    if (ok) {
+      setCheckoutOpen(false);
+      setCheckoutCount("");
+    }
   };
 
-  const submitLeave = () => {
+  const submitLeave = async () => {
     if (!selectedDate) return;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const target = new Date(`${selectedDate}T00:00:00`);
-    const diffDays = Math.round((target - today) / 86400000);
-    const status = diffDays >= 2 ? "자동 승인" : "승인 대기";
-    setLeaves((prev) => [...prev, {
-      date: selectedDate,
-      name: "이재인",
-      status,
-      reason: "일반 휴무",
-      memo: leaveMemo.trim(),
-    }]);
+    const response = await authFetch("/api/attendance/leave", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: selectedDate, memo: leaveMemo }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setNotice(result.message || "휴무 등록 중 오류가 발생했습니다.");
+      return;
+    }
+    setNotice(result.message);
     setLeaveOpen(false);
     setLeaveMemo("");
+    await loadAttendance();
   };
 
   const summaries = [
-    { label: "오늘 출근", value: `${summary.checked}명`, detail: "전체 9명 중", icon: Users, tone: "lime" },
-    { label: "근무 중", value: `${summary.working}명`, detail: `${Math.round(summary.working / 9 * 100)}%`, icon: BriefcaseBusiness, tone: "blue" },
+    { label: "오늘 출근", value: `${summary.checked}명`, detail: `전체 ${managers.length}명 중`, icon: Users, tone: "lime" },
+    { label: "근무 중", value: `${summary.working}명`, detail: `${managers.length ? Math.round(summary.working / managers.length * 100) : 0}%`, icon: BriefcaseBusiness, tone: "blue" },
+    { label: "지각", value: `${summary.late}명`, detail: "개별 기준시간 적용", icon: Clock3, tone: "red" },
     { label: "식사·휴식", value: `${summary.break}명`, detail: "현재 상태 기준", icon: Coffee, tone: "amber" },
     { label: "퇴근", value: `${summary.off}명`, detail: "퇴근건수 입력", icon: LogOut, tone: "violet" },
     { label: "휴무·미출근", value: `${summary.absent}명`, detail: "확인 필요", icon: AlertTriangle, tone: "red" },
@@ -230,6 +264,8 @@ function AdminAttendance({ currentRegion }) {
         </div>
         <div className="attendance-head-meta"><RefreshCw size={15}/><span>최신 상태</span></div>
       </section>
+
+      {notice && <div className="admin-management-message">{notice}</div>}
 
       <div className="attendance-view-tabs" role="tablist" aria-label="근무표 화면 전환">
         <button type="button" className={viewMode === "today" ? "active" : ""} onClick={() => setViewMode("today")}>
@@ -261,7 +297,24 @@ function AdminAttendance({ currentRegion }) {
               <div>
                 <span>현재 상태</span>
                 <strong>{myStatus}</strong>
-                <small>출근 09:07 · {currentRegion}</small>
+                <small>
+                  {currentUser?.role === "BOSS/지사장"
+                    ? "기준 출근시간 없음"
+                    : `기준 ${currentUser?.scheduled_start_time || "10:00"}`}
+                  {" · "}
+                  {currentUser?.check_in
+                    ? `출근 ${new Date(currentUser.check_in).toLocaleTimeString("ko-KR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}`
+                    : "출근 전"}
+                  {Number(currentUser?.late) === 1
+                    ? ` · 지각 ${currentUser?.late_minutes || 0}분`
+                    : ""}
+                  {" · "}
+                  {currentUser?.region || currentRegion}
+                </small>
               </div>
               <span className={`attendance-status ${statusMeta[myStatus]?.tone || "working"}`}>{myStatus}</span>
             </div>
@@ -277,12 +330,12 @@ function AdminAttendance({ currentRegion }) {
                   </button>
                 );
               })}
-              <button type="button" className="attendance-action-button approval" onClick={() => updateMyStatus("근무 중")}>
+              <button type="button" className="attendance-action-button approval" onClick={submitApprovedCheckIn}>
                 <span className="action-icon"><ShieldCheck size={22}/></span>
                 <span><strong>승인출근</strong><small>지각 예외 승인</small></span>
               </button>
             </div>
-            <p className="approval-note"><ShieldCheck size={15}/> 승인출근은 지사장·운영실장 승인 후 사용하며 지각으로 처리되지 않습니다.</p>
+            <p className="approval-note"><ShieldCheck size={15}/> 승인출근은 사전 보고 후 사용하며 지각으로 처리되지 않습니다. BOSS/지사장은 지각 대상에서 제외됩니다.</p>
           </section>
 
           <section className="attendance-board-panel">
@@ -291,30 +344,69 @@ function AdminAttendance({ currentRegion }) {
               <div className="attendance-tools">
                 <label className="attendance-search"><Search size={16}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="관리자 검색"/></label>
                 <select value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)}>
-                  <option>전체 권역</option><option>강남중앙1</option><option>강남중앙2</option><option>강남서초중앙</option><option>강남남중앙</option>
+                  <option>전체 권역</option>
+                  <option>전권역 운영</option>
+                  <option>강남중앙1</option>
+                  <option>강남중앙2</option>
+                  <option>강남서초중앙</option>
+                  <option>강남남중앙</option>
+                  <option>강남서부</option>
+                  <option>권역없음(현장팀장)</option>
                 </select>
-                <button type="button" className="attendance-tool-button"><RefreshCw size={16}/> 새로고침</button>
-                <button type="button" className="attendance-tool-button export"><ArrowDownToLine size={16}/> 엑셀 다운로드</button>
+                <button type="button" className="attendance-tool-button" onClick={loadAttendance}><RefreshCw size={16}/> 새로고침</button>
+
               </div>
             </div>
 
             <div className="attendance-table-head">
-              <span>이름 / 직책</span><span>현재 권역</span><span>출근시간</span><span>현재 상태</span><span>퇴근시간</span><span>퇴근건수</span><span>지각 여부</span><span>관리</span>
+              <span>이름 / 직책</span><span>현재 권역</span><span>기준 / 출근시간</span><span>현재 상태</span><span>퇴근시간</span><span>퇴근건수</span><span>지각 여부</span><span>관리</span>
             </div>
             <div className="attendance-manager-list">
+              {loading && <div className="admin-empty-state">근태 정보를 불러오는 중입니다.</div>}
+              {!loading && filtered.length === 0 && <div className="admin-empty-state">표시할 관리자가 없습니다.</div>}
               {filtered.map((manager) => {
-                const meta = statusMeta[manager.status];
+                const meta = statusMeta[manager.status] || statusMeta["미출근"];
                 const StatusIcon = meta.icon;
                 return (
-                  <article className="attendance-manager-row" key={manager.name}>
+                  <article className="attendance-manager-row" key={manager.user_id}>
                     <div className="manager-person"><span className="manager-photo">{manager.name.slice(0,1)}</span><div><strong>{manager.name}</strong><small>{manager.role}</small></div></div>
-                    <div className="manager-region"><MapPin size={14}/>{manager.region}</div>
-                    <div className="manager-time"><Clock3 size={14}/>{manager.start}</div>
+                    <div className="manager-region"><MapPin size={14}/>{manager.region || "미배정"}</div>
+                    <div className="manager-time manager-schedule-time">
+                      <Clock3 size={14}/>
+                      <span>
+                        <small>
+                          {manager.role === "BOSS/지사장"
+                            ? "기준 없음"
+                            : `기준 ${manager.scheduled_start_time || "10:00"}`}
+                        </small>
+                        <strong>
+                          {manager.check_in
+                            ? new Date(manager.check_in).toLocaleTimeString("ko-KR", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                              })
+                            : "-"}
+                        </strong>
+                      </span>
+                    </div>
                     <div><span className={`attendance-status ${meta.tone}`}><StatusIcon size={14}/>{manager.status}</span>{manager.since && <small className="status-since">{manager.since}</small>}</div>
-                    <div className="manager-time">{manager.end || "-"}</div>
-                    <div className="manager-count">{manager.status === "퇴근" && manager.checkoutCount !== null ? <><strong>{manager.checkoutCount}</strong>건</> : <span>-</span>}</div>
-                    <div>{manager.late ? <span className="late-badge">무단결근</span> : <span className="normal-badge">정상</span>}</div>
-                    <div><button type="button" className="row-manage-button">상태 수정</button></div>
+                    <div className="manager-time">{manager.check_out ? new Date(manager.check_out).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false }) : "-"}</div>
+                    <div className="manager-count">{manager.status === "퇴근" && manager.orders !== null && manager.orders !== undefined ? <><strong>{manager.orders}</strong>건</> : <span>-</span>}</div>
+                    <div>
+                      {manager.absent ? (
+                        <span className="late-badge">무단결근</span>
+                      ) : Number(manager.late) === 1 ? (
+                        <span className="late-badge">지각 {manager.late_minutes || 0}분</span>
+                      ) : manager.approved_checkin ? (
+                        <span className="approved-badge">승인출근</span>
+                      ) : (
+                        <span className="normal-badge">
+                          {manager.role === "BOSS/지사장" ? "지각 제외" : "정상"}
+                        </span>
+                      )}
+                    </div>
+                    <div><span className="normal-badge">실시간 반영</span></div>
                   </article>
                 );
               })}

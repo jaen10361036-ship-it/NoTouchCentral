@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "reader:setup": "node reader/setup.js",
+    "reader": "node reader/runner.js"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.5",
@@ -20,6 +22,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "vite": "^6.4.3",
-    "wrangler": "^4.110.0"
+    "wrangler": "^4.110.0",
+    "playwright": "^1.54.1"
   }
 }

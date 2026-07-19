@@ -18,50 +18,58 @@ import {
 const DEFAULT_CENTER = [37.4979, 127.0276];
 const MAP_ZOOM = 13;
 
-const initialManagers = [
-  { id: 1, name: "이재인", role: "BOSS/지사장", badge: "BOSS", region: "강남중앙1", status: "운행중", count: 42, updatedAt: Date.now(), lat: 37.4979, lng: 127.0276, isLive: true },
-  { id: 2, name: "이선호", role: "총괄본부장", badge: "TEAM LEADER", region: "강남중앙2", status: "운행중", count: 37, updatedAt: Date.now() - 4000, lat: 37.5101, lng: 127.0437 },
-  { id: 3, name: "정희철", role: "남중앙 팀장", badge: "TEAM LEADER", region: "강남남중앙", status: "배정대기", count: 28, updatedAt: Date.now() - 8000, lat: 37.4729, lng: 127.0413 },
-  { id: 4, name: "서상원", role: "팀장", badge: "TEAM LEADER", region: "강남서초중앙", status: "운행중", count: 31, updatedAt: Date.now() - 5000, lat: 37.4917, lng: 127.0086 },
-  { id: 5, name: "박성현", role: "팀장", badge: "TEAM LEADER", region: "강남중앙1", status: "식사중", count: 24, updatedAt: Date.now() - 12000, lat: 37.5047, lng: 127.0342 },
-  { id: 6, name: "신정민", role: "팀장", badge: "TEAM LEADER", region: "강남중앙2", status: "운행중", count: 35, updatedAt: Date.now() - 6000, lat: 37.5172, lng: 127.0474 },
-  { id: 7, name: "김태호", role: "팀장", badge: "TEAM LEADER", region: "강남서초중앙", status: "휴식중", count: 19, updatedAt: Date.now() - 18000, lat: 37.4857, lng: 127.0057 },
-  { id: 8, name: "김남교", role: "팀장", badge: "TEAM LEADER", region: "강남남중앙", status: "운행중", count: 29, updatedAt: Date.now() - 7000, lat: 37.4787, lng: 127.0512 },
-];
+const initialManagers = [];
 
 const statusIcon = {
   운행중: Bike,
+  "근무 중": Bike,
+  위치공유중: Navigation,
   식사중: Utensils,
   휴식중: Coffee,
+  휴식: Coffee,
   배정대기: Crosshair,
+  배정대기중: Crosshair,
+  "GPS 끊김": Signal,
+  "위치 미수신": MapPin,
 };
 
-function loadLeaflet() {
-  if (window.L) return Promise.resolve(window.L);
-  return new Promise((resolve, reject) => {
-    const existingCss = document.querySelector('link[data-ntc-leaflet="true"]');
-    if (!existingCss) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      link.dataset.ntcLeaflet = "true";
-      document.head.appendChild(link);
-    }
+const NAVER_MAP_CLIENT_ID = "fdibsay7lo";
 
-    const existingScript = document.querySelector('script[data-ntc-leaflet="true"]');
+function loadNaverMaps() {
+  if (window.naver?.maps) return Promise.resolve(window.naver.maps);
+
+  return new Promise((resolve, reject) => {
+    const existingScript = document.querySelector('script[data-ntc-naver-map="true"]');
+
     if (existingScript) {
-      existingScript.addEventListener("load", () => resolve(window.L), { once: true });
+      if (window.naver?.maps) {
+        resolve(window.naver.maps);
+        return;
+      }
+
+      existingScript.addEventListener(
+        "load",
+        () => {
+          if (window.naver?.maps) resolve(window.naver.maps);
+          else reject(new Error("NAVER Maps SDK가 초기화되지 않았습니다."));
+        },
+        { once: true },
+      );
       existingScript.addEventListener("error", reject, { once: true });
       return;
     }
 
     const script = document.createElement("script");
-    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAP_CLIENT_ID}`;
     script.async = true;
-    script.dataset.ntcLeaflet = "true";
-    script.onload = () => resolve(window.L);
-    script.onerror = reject;
-    document.body.appendChild(script);
+    script.defer = true;
+    script.dataset.ntcNaverMap = "true";
+    script.onload = () => {
+      if (window.naver?.maps) resolve(window.naver.maps);
+      else reject(new Error("NAVER Maps SDK가 초기화되지 않았습니다."));
+    };
+    script.onerror = () => reject(new Error("NAVER Maps SDK를 불러오지 못했습니다."));
+    document.head.appendChild(script);
   });
 }
 
@@ -75,13 +83,18 @@ function formatAgo(timestamp, now) {
 
 function markerHtml(manager, active) {
   const badgeClass = manager.badge === "BOSS" ? "boss" : "leader";
-  const icon = manager.badge === "BOSS" ? "◆" : "➤";
+  const icon = manager.badge === "BOSS" ? "B" : "TL";
+
   return `
-    <div class="ntc-leaflet-marker ${badgeClass} ${active ? "selected" : ""}">
-      <span class="ntc-leaflet-pulse"></span>
-      <span class="ntc-leaflet-core">${icon}</span>
-      <span class="ntc-leaflet-label"><strong>${manager.name}</strong><small>${manager.role}</small></span>
-    </div>`;
+    <div class="ntc-naver-marker compact ${badgeClass} ${active ? "selected" : ""}">
+      <span class="ntc-naver-marker-label">
+        <strong>${manager.name}</strong>
+        <small>${manager.role}</small>
+      </span>
+      <span class="ntc-naver-marker-ring"></span>
+      <span class="ntc-naver-marker-core">${icon}</span>
+    </div>
+  `;
 }
 
 function StatusChip({ icon: Icon, label, value, tone }) {
@@ -93,9 +106,9 @@ function StatusChip({ icon: Icon, label, value, tone }) {
   );
 }
 
-export default function AdminLiveControl() {
+export default function AdminLiveControl({ token: suppliedToken, currentUser }) {
   const [managers, setManagers] = useState(initialManagers);
-  const [selectedId, setSelectedId] = useState(1);
+  const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("전체");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -105,13 +118,18 @@ export default function AdminLiveControl() {
   const [gpsState, setGpsState] = useState("idle");
   const [gpsMessage, setGpsMessage] = useState("위치 공유 대기");
   const [now, setNow] = useState(Date.now());
+  const [serverError, setServerError] = useState("");
+  const [lastSyncAt, setLastSyncAt] = useState(null);
 
   const mapElementRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef(new Map());
   const watchIdRef = useRef(null);
+  const initialCenterAppliedRef = useRef(false);
+  const manualMapMoveRef = useRef(false);
+  const resizeObserverRef = useRef(null);
 
-  const selected = managers.find((manager) => manager.id === selectedId) || managers[0];
+  const selected = managers.find((manager) => manager.id === selectedId) || null;
   const filteredManagers = useMemo(() => managers.filter((manager) => {
     const matchesText = `${manager.name} ${manager.role} ${manager.region}`.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = filter === "전체" || manager.status === filter;
@@ -119,11 +137,103 @@ export default function AdminLiveControl() {
   }), [managers, search, filter]);
 
   const counts = useMemo(() => ({
-    riding: managers.filter((item) => item.status === "운행중").length,
+    riding: managers.filter((item) =>
+      ["운행중", "근무 중", "위치 공유중"].includes(item.status)
+    ).length,
     meal: managers.filter((item) => item.status === "식사중").length,
-    rest: managers.filter((item) => item.status === "휴식중").length,
-    waiting: managers.filter((item) => item.status === "배정대기").length,
+    rest: managers.filter((item) => ["휴식중", "휴식"].includes(item.status)).length,
+    waiting: managers.filter((item) =>
+      ["배정대기", "배정대기중"].includes(item.status)
+    ).length,
   }), [managers]);
+
+  const getToken = () =>
+    suppliedToken ||
+    localStorage.getItem("ntc_token") ||
+    sessionStorage.getItem("ntc_token") ||
+    "";
+
+  const normalizeLiveManager = (item) => {
+    const rawUpdated = String(item.updated_at || "").trim();
+    const updatedAt = rawUpdated
+      ? new Date(rawUpdated.includes("T") ? rawUpdated : `${rawUpdated.replace(" ", "T")}Z`).getTime()
+      : 0;
+    const hasLocation =
+      item.latitude !== null &&
+      item.longitude !== null &&
+      Number.isFinite(Number(item.latitude)) &&
+      Number.isFinite(Number(item.longitude));
+    const staleSeconds = updatedAt
+      ? Math.max(0, Math.floor((Date.now() - updatedAt) / 1000))
+      : 999999;
+    const stale = hasLocation && staleSeconds >= 30;
+
+    return {
+      id: Number(item.user_id),
+      name: item.name,
+      role: item.role,
+      badge: item.role === "BOSS/지사장" ? "BOSS" : "TEAM LEADER",
+      region: item.region || "권역 미지정",
+      status: !hasLocation
+        ? "위치 미수신"
+        : stale
+          ? "GPS 끊김"
+          : (item.attendance_status || "위치 공유중"),
+      count: Number(item.orders || 0),
+      updatedAt,
+      lat: hasLocation ? Number(item.latitude) : null,
+      lng: hasLocation ? Number(item.longitude) : null,
+      accuracy: item.accuracy == null ? null : Number(item.accuracy),
+      speed: item.speed == null ? null : Number(item.speed),
+      heading: item.heading == null ? null : Number(item.heading),
+      hasLocation,
+      isLive: hasLocation && !stale,
+    };
+  };
+
+  const loadLiveManagers = async () => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch("/api/live-map/locations", {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.message || "실시간 위치를 불러오지 못했습니다.");
+      }
+
+      const nextManagers = (result.locations || []).map(normalizeLiveManager);
+
+      setManagers(nextManagers);
+      setServerError("");
+      setLastSyncAt(Date.now());
+      setSelectedId((current) => {
+        if (current && nextManagers.some((manager) => manager.id === current)) {
+          return current;
+        }
+
+        const me = nextManagers.find(
+          (manager) => Number(manager.id) === Number(currentUser?.id),
+        );
+        if (me?.hasLocation) return me.id;
+
+        return nextManagers.find((manager) => manager.hasLocation)?.id ?? null;
+      });
+    } catch (error) {
+      console.error("live locations load failed", error);
+      setServerError(error.message || "실시간 위치를 불러오지 못했습니다.");
+    }
+  };
+
+  useEffect(() => {
+    loadLiveManagers();
+    const timer = window.setInterval(loadLiveManagers, 5000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -132,84 +242,201 @@ export default function AdminLiveControl() {
 
   useEffect(() => {
     let cancelled = false;
-    loadLeaflet()
-      .then((L) => {
+
+    loadNaverMaps()
+      .then((maps) => {
         if (cancelled || !mapElementRef.current || mapRef.current) return;
-        const map = L.map(mapElementRef.current, {
-          zoomControl: false,
-          attributionControl: true,
-          preferCanvas: true,
-        }).setView(DEFAULT_CENTER, MAP_ZOOM);
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          maxZoom: 19,
-          attribution: "&copy; OpenStreetMap contributors",
-        }).addTo(map);
+        const map = new maps.Map(mapElementRef.current, {
+          center: new maps.LatLng(DEFAULT_CENTER[0], DEFAULT_CENTER[1]),
+          zoom: 16,
+          minZoom: 10,
+          maxZoom: 20,
+          zoomControl: true,
+          zoomControlOptions: {
+            position: maps.Position.RIGHT_BOTTOM,
+          },
+          mapTypeControl: false,
+          scaleControl: false,
+          logoControl: true,
+          mapDataControl: false,
+        });
 
-        L.control.zoom({ position: "bottomright" }).addTo(map);
         mapRef.current = map;
+
+        const forceMapResize = () => {
+          if (!mapRef.current || !mapElementRef.current) return;
+          const rect = mapElementRef.current.getBoundingClientRect();
+          if (rect.width < 10 || rect.height < 10) return;
+
+          maps.Event.trigger(mapRef.current, "resize");
+
+          const current = managers.find(
+            (manager) =>
+              Number(manager.id) === Number(currentUser?.id) &&
+              manager.hasLocation,
+          ) || managers.find((manager) => manager.hasLocation);
+
+          if (current && !initialCenterAppliedRef.current) {
+            mapRef.current.setCenter(
+              new maps.LatLng(current.lat, current.lng),
+            );
+            mapRef.current.setZoom(17);
+            initialCenterAppliedRef.current = true;
+          }
+        };
+
+        resizeObserverRef.current = new ResizeObserver(() => {
+          window.requestAnimationFrame(forceMapResize);
+        });
+        resizeObserverRef.current.observe(mapElementRef.current);
+
+        window.addEventListener("resize", forceMapResize);
+        window.addEventListener("orientationchange", forceMapResize);
+        document.addEventListener("visibilitychange", forceMapResize);
+
+        window.setTimeout(forceMapResize, 100);
+        window.setTimeout(forceMapResize, 350);
+        window.setTimeout(forceMapResize, 900);
+
+        maps.Event.addListener(map, "dragstart", () => {
+          manualMapMoveRef.current = true;
+        });
+        maps.Event.addListener(map, "zoom_changed", () => {
+          if (initialCenterAppliedRef.current) {
+            manualMapMoveRef.current = true;
+          }
+        });
+
         setMapReady(true);
-        window.setTimeout(() => map.invalidateSize(), 100);
+
+        window.setTimeout(() => {
+          maps.Event.trigger(map, "resize");
+        }, 120);
       })
-      .catch(() => setMapError("실시간 지도를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요."));
+      .catch((error) => {
+        console.error("NAVER map load failed", error);
+        setMapError(
+          "네이버지도를 불러오지 못했습니다. 네이버클라우드 Web 서비스 URL과 Client ID를 확인해 주세요.",
+        );
+      });
 
     return () => {
       cancelled = true;
+
       if (watchIdRef.current !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
+
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
       }
+
+      markersRef.current.forEach((marker) => marker.setMap(null));
+      markersRef.current.clear();
+
+      if (mapRef.current && window.naver?.maps) {
+        window.naver.maps.Event.clearInstanceListeners(mapRef.current);
+      }
+
+      mapRef.current = null;
     };
   }, []);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !window.L) return;
-    const L = window.L;
-    const nextIds = new Set(managers.map((manager) => manager.id));
+    if (!mapReady || !mapRef.current || !window.naver?.maps) return;
+
+    const maps = window.naver.maps;
+    const mapManagers = managers.filter(
+      (manager) =>
+        manager.hasLocation &&
+        Number.isFinite(manager.lat) &&
+        Number.isFinite(manager.lng),
+    );
+    const nextIds = new Set(mapManagers.map((manager) => manager.id));
 
     markersRef.current.forEach((marker, id) => {
       if (!nextIds.has(id)) {
-        marker.remove();
+        maps.Event.clearInstanceListeners(marker);
+        marker.setMap(null);
         markersRef.current.delete(id);
       }
     });
 
-    managers.forEach((manager) => {
-      const icon = L.divIcon({
-        className: "ntc-marker-wrapper",
-        html: markerHtml(manager, manager.id === selectedId),
-        iconSize: [150, 70],
-        iconAnchor: [75, 32],
-      });
+    mapManagers.forEach((manager) => {
+      const position = new maps.LatLng(manager.lat, manager.lng);
+      const content = markerHtml(manager, manager.id === selectedId);
       const existing = markersRef.current.get(manager.id);
+
       if (existing) {
-        existing.setLatLng([manager.lat, manager.lng]);
-        existing.setIcon(icon);
-      } else {
-        const marker = L.marker([manager.lat, manager.lng], { icon, riseOnHover: true })
-          .addTo(mapRef.current)
-          .on("click", () => setSelectedId(manager.id));
-        markersRef.current.set(manager.id, marker);
+        existing.setPosition(position);
+        existing.setIcon({
+          content,
+          size: new maps.Size(72, 58),
+          anchor: new maps.Point(36, 51),
+        });
+        return;
       }
+
+      const marker = new maps.Marker({
+        map: mapRef.current,
+        position,
+        clickable: true,
+        zIndex: manager.badge === "BOSS" ? 120 : 100,
+        icon: {
+          content,
+          size: new maps.Size(72, 58),
+          anchor: new maps.Point(36, 51),
+        },
+      });
+
+      maps.Event.addListener(marker, "click", () => {
+        setSelectedId(manager.id);
+      });
+
+      markersRef.current.set(manager.id, marker);
     });
   }, [managers, selectedId, mapReady]);
 
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !selected) return;
-    mapRef.current.panTo([selected.lat, selected.lng], { animate: true, duration: 0.45 });
+    if (
+      !mapReady ||
+      !mapRef.current ||
+      !selected?.hasLocation ||
+      !window.naver?.maps
+    ) {
+      return;
+    }
+
+    const position = new window.naver.maps.LatLng(selected.lat, selected.lng);
+
+    if (!initialCenterAppliedRef.current) {
+      mapRef.current.setCenter(position);
+      mapRef.current.setZoom(17);
+      initialCenterAppliedRef.current = true;
+      manualMapMoveRef.current = false;
+      return;
+    }
+
+    // Only marker/list clicks update the center. Five-second data refreshes never reset zoom.
+    if (!manualMapMoveRef.current) {
+      mapRef.current.panTo(position);
+    }
   }, [selectedId, mapReady]);
 
-  const refresh = () => {
+  const refresh = async () => {
     setRefreshing(true);
-    if (mapRef.current) mapRef.current.invalidateSize();
-    window.setTimeout(() => setRefreshing(false), 650);
+    if (mapRef.current && window.naver?.maps) {
+      window.naver.maps.Event.trigger(mapRef.current, "resize");
+    }
+    await loadLiveManagers();
+    window.setTimeout(() => setRefreshing(false), 350);
   };
 
   const selectManager = (manager) => {
     setSelectedId(manager.id);
+    manualMapMoveRef.current = false;
     setSheetOpen(false);
   };
 
@@ -220,22 +447,55 @@ export default function AdminLiveControl() {
       return;
     }
     if (watchIdRef.current !== null) {
-      const me = managers.find((item) => item.id === 1);
-      if (me && mapRef.current) mapRef.current.setView([me.lat, me.lng], 16, { animate: true });
+      const me =
+        managers.find((manager) => Number(manager.id) === Number(currentUser?.id) && manager.hasLocation) ||
+        selected ||
+        managers.find((manager) => manager.hasLocation);
+      if (me?.hasLocation && mapRef.current && window.naver?.maps) {
+        mapRef.current.setZoom(17);
+        mapRef.current.panTo(new window.naver.maps.LatLng(me.lat, me.lng));
+      }
       return;
     }
 
     setGpsState("requesting");
     setGpsMessage("위치 권한을 확인하는 중입니다...");
     watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
-        setManagers((current) => current.map((manager) => manager.id === 1
-          ? { ...manager, lat: latitude, lng: longitude, updatedAt: Date.now(), accuracy, isLive: true }
-          : manager));
-        setGpsState("active");
-        setGpsMessage(`실시간 위치 공유 중 · 오차 약 ${Math.round(accuracy)}m`);
-        if (mapRef.current) mapRef.current.setView([latitude, longitude], 16, { animate: true });
+      async (position) => {
+        const { latitude, longitude, accuracy, heading, speed } = position.coords;
+
+        try {
+          const response = await fetch("/api/location/update", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${getToken()}`,
+            },
+            body: JSON.stringify({
+              latitude,
+              longitude,
+              accuracy,
+              heading: Number.isFinite(heading) ? heading : null,
+              speed: Number.isFinite(speed) ? speed : null,
+            }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(result.message || "위치 저장에 실패했습니다.");
+          }
+
+          setGpsState("active");
+          setGpsMessage(`실시간 위치 공유 중 · 오차 약 ${Math.round(accuracy)}m`);
+          await loadLiveManagers();
+
+          if (mapRef.current && window.naver?.maps) {
+            mapRef.current.setZoom(17);
+            mapRef.current.panTo(new window.naver.maps.LatLng(latitude, longitude));
+          }
+        } catch (error) {
+          setGpsState("error");
+          setGpsMessage(error.message || "위치 저장에 실패했습니다.");
+        }
       },
       (error) => {
         watchIdRef.current = null;
@@ -254,17 +514,33 @@ export default function AdminLiveControl() {
         <div>
           <span className="live-control-kicker"><i /> LIVE POSITION CONTROL</span>
           <h2>실시간 관제</h2>
-          <p>실제 지도와 현재 기기 GPS를 연결해 관리자 위치를 확인합니다.</p>
+          <p>네이버지도와 현재 기기 GPS를 연결해 관리자 위치를 확인합니다.</p>
         </div>
         <div className="live-control-sync">
           <Signal size={17} />
-          <span><small>실시간 연결 상태</small><strong>{refreshing ? "갱신 중..." : gpsMessage}</strong></span>
+          <span>
+            <small>실시간 연결 상태</small>
+            <strong>
+              {refreshing
+                ? "갱신 중..."
+                : serverError
+                  ? serverError
+                  : lastSyncAt
+                    ? `${gpsMessage} · 서버 ${formatAgo(lastSyncAt, now)}`
+                    : gpsMessage}
+            </strong>
+          </span>
           <button type="button" onClick={refresh} aria-label="위치 새로고침"><RefreshCw size={18} className={refreshing ? "spin" : ""} /></button>
         </div>
       </div>
 
       <div className="live-stat-row">
-        <StatusChip icon={Users} label="현재 접속" value={`${managers.length}명`} tone="online" />
+        <StatusChip
+          icon={Users}
+          label="현재 접속"
+          value={`${managers.filter((manager) => manager.isLive).length}명`}
+          tone="online"
+        />
         <StatusChip icon={Bike} label="운행중" value={`${counts.riding}명`} tone="riding" />
         <StatusChip icon={Utensils} label="식사중" value={`${counts.meal}명`} tone="meal" />
         <StatusChip icon={Coffee} label="휴식중" value={`${counts.rest}명`} tone="rest" />
@@ -281,29 +557,31 @@ export default function AdminLiveControl() {
           </div>
 
           <div className="live-map-stage live-map-real">
-            <div ref={mapElementRef} className="live-leaflet-map" />
+            <div ref={mapElementRef} className="live-naver-map" />
             {!mapReady && !mapError && <div className="live-map-loading"><RefreshCw className="spin" size={22}/><strong>실시간 지도 연결 중</strong></div>}
             {mapError && <div className="live-map-loading error"><MapPin size={24}/><strong>{mapError}</strong></div>}
-
-            {selected && (
-              <article className="selected-manager-card live-selected-overlay">
-                <button type="button" onClick={() => setSelectedId(0)} aria-label="상세 닫기"><X size={15}/></button>
-                <div className="selected-manager-top">
-                  <span className={selected.badge === "BOSS" ? "boss" : "leader"}>{selected.badge}</span>
-                  <i className={`status-dot ${selected.status}`} />
-                </div>
-                <strong>{selected.name}</strong><small>{selected.role}</small>
-                <div className="selected-manager-meta">
-                  <span><small>현재 권역</small><b>{selected.region.replace("강남", "")}</b></span>
-                  <span><small>오늘 수행</small><b>{selected.count}건</b></span>
-                </div>
-                <div className="selected-manager-foot"><span>{selected.status}</span><small>GPS {formatAgo(selected.updatedAt, now)}</small></div>
-              </article>
+            {!mapError && serverError && (
+              <div className="live-map-loading error">
+                <Signal size={24}/>
+                <strong>{serverError}</strong>
+              </div>
             )}
+            {mapReady && !mapError && !serverError && managers.length === 0 && (
+              <div className="live-map-loading live-map-empty">
+                <LocateFixed size={24}/>
+                <strong>현재 수신된 관리자 위치가 없습니다.</strong>
+                <span>관리자 기기에서 위치 권한을 허용하면 자동으로 표시됩니다.</span>
+              </div>
+            )}
+
           </div>
 
           <div className="live-map-mobile-bar" onClick={() => setSheetOpen(true)}>
-            <span><Users size={18}/><b>관리자 {managers.length}명</b><small>현황 펼쳐보기</small></span>
+            <span>
+              <Users size={18}/>
+              <b>승인 관리자 {managers.length}명</b>
+              <small>위치 수신 {managers.filter((manager) => manager.hasLocation).length}명</small>
+            </span>
             <ChevronHandle />
           </div>
         </div>
@@ -324,12 +602,22 @@ export default function AdminLiveControl() {
                 <button type="button" key={manager.id} className={selectedId === manager.id ? "active" : ""} onClick={() => selectManager(manager)}>
                   <span className={`manager-list-avatar ${manager.badge === "BOSS" ? "boss" : "leader"}`}>{manager.name.slice(0, 1)}</span>
                   <span className="manager-list-info"><strong>{manager.name}<small>{manager.role}</small></strong><span><MapPin size={13}/>{manager.region.replace("강남", "")}</span></span>
-                  <span className="manager-list-status"><b className={manager.status}><Icon size={13}/>{manager.status}</b><small>{formatAgo(manager.updatedAt, now)}</small></span>
+                  <span className="manager-list-status">
+                    <b className={manager.status}><Icon size={13}/>{manager.status}</b>
+                    <small>
+                      {!manager.hasLocation
+                        ? "위치 권한 허용 전"
+                        : <>
+                            {manager.accuracy ? `오차 ${Math.round(manager.accuracy)}m · ` : ""}
+                            {formatAgo(manager.updatedAt, now)}
+                          </>}
+                    </small>
+                  </span>
                 </button>
               );
             })}
           </div>
-          <div className="live-panel-note"><Shield size={16}/><span>현재 패치는 실제 지도와 이 기기의 GPS를 사용합니다. 다른 관리자 기기의 위치 공유는 서버 연결 후 활성화됩니다.</span></div>
+          <div className="live-panel-note"><Shield size={16}/><span>D1에 저장된 실제 승인 관리자 GPS만 표시합니다. 30초 이상 미수신 시 GPS 끊김으로 표시됩니다.</span></div>
         </aside>
       </div>
 
